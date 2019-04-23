@@ -1,6 +1,7 @@
 from Loaders import Loaders
 
 l = Loaders()
-test = l.get_prospect()
-# test = Loaders.ADFtest(test)
-print(test.head())
+bonds = l.get_bond()
+test = l.get_transboarder()
+test = l.adf_coin_reg('transboarder', 'month', 1)
+print(test)
