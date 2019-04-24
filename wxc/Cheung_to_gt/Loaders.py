@@ -11,6 +11,7 @@ import copy
 import re
 import os
 from WindPy import *
+import rpy2
 warnings.filterwarnings('ignore')
 w.start()
 
@@ -184,7 +185,7 @@ class Loaders:
         self.rate = ['M0000271', 'G0002331', 'G0002334', 'G0002347', 'G0002329']
         self.rate_name = ['美元指数', '欧元兑美元', '美元兑日元', '英镑兑美元', '美元兑人民币元']
 
-        # 内外利差类指标(还需做差)
+        # 内外利差类指标(还需做差)(daily)
         ## 1年
         self.diffrate1 = ['G0000886', 'G0008063', 'G0008146']
         self.diffrate1_name = ['美国-中国:国债收益率:1年', '德国-中国:国债收益率:1年', '法国-中国:国债收益率:1年']
@@ -206,34 +207,41 @@ class Loaders:
         self.diffrate10_name = ['美国-中国:国债收益率:10年', '德国-中国:国债收益率:10年', '法国-中国:国债收益率:10年',
                                 '英国-中国:国债收益率:10年']
 
-        # 其他政府监管类指标（前三个需做差）
-        self.supervise = ['M0017142', 'M0017153', 'M1001816', 'M5515275', 'M5515276', 'M5515277', 'M5515278', 'M0048631',
-                          'M0012276', 'M0024271', 'M5207866', 'M5207874', 'M0024274', 'M0085818', 'M0148909', 'M0148920',
-                          'M0041753', 'M0148907', 'M5639028', 'M5639035', 'M0001710']
-        self.supervise_name = ['SHIBOR:3个月', '回购定盘利率:7天(FR007)', 'GC007:收盘价', '信托业:未来一年到期规模:合计',
-                               '信托业:未来一年到期规模:集合信托', '信托业:未来一年到期规模:单一信托',
-                               '信托业:未来一年到期规模:财产权信托', '保险公司:银行存款和债券:占资金运用余额比例',
-                               '保险公司:保险资金运用余额:投资:债券投资', '基金管理公司管理资产规模:公募基金',
-                               '公募基金份额:开放式基金:债券型', '公募基金净值:开放式基金:债券型',
-                               '证券投资基金成交金额:当月值', '银行理财产品资金余额', '中债:债券托管量:国债:商业银行',
-                               '中债:债券托管量:国债:保险机构', '待购回债券余额', '中债:债券托管量:国债:合计',
-                               '债券市场发行债券:同业存单', '债券市场托管余额:同业存单', '其他存款性公司:对其他金融机构债权']
+        # 其他政府监管类指标（前三个需做差，且前三位daily）
+        ## daily
+        self.supervise1 = ['M0017142', 'M0017153', 'M1001816']
+        self.supervise1_name = ['SHIBOR:3个月', '回购定盘利率:7天(FR007)', 'GC007:收盘价', ]
+
+        ## monthly
+        self.supervise2 = ['M5515275', 'M5515276', 'M5515277', 'M5515278', 'M0048631', 'M0012276', 'M0024271', 'M5207866',
+                           'M5207874', 'M0024274', 'M0085818', 'M0148909', 'M0148920', 'M0041753', 'M0148907', 'M5639028',
+                           'M5639035', 'M0001710']
+        self.supervise2_name = ['信托业:未来一年到期规模:合计', '信托业:未来一年到期规模:集合信托',
+                                '信托业:未来一年到期规模:单一信托', '信托业:未来一年到期规模:财产权信托',
+                                '保险公司:银行存款和债券:占资金运用余额比例', '保险公司:保险资金运用余额:投资:债券投资',
+                                '基金管理公司管理资产规模:公募基金', '公募基金份额:开放式基金:债券型',
+                                '公募基金净值:开放式基金:债券型', '证券投资基金成交金额:当月值', '银行理财产品资金余额',
+                                '中债:债券托管量:国债:商业银行', '中债:债券托管量:国债:保险机构', '待购回债券余额',
+                                '中债:债券托管量:国债:合计', '债券市场发行债券:同业存单', '债券市场托管余额:同业存单',
+                                '其他存款性公司:对其他金融机构债权']
 
         # 货币政策类指标
-        self.currency_rule = ['M0329541', 'M0329542', 'M5528822', 'M5528821', 'M0061614', 'M0061615', 'M0061616', 'M0062600',
-                     'M0043821', 'M0061518', 'M0010096', 'M0010099', 'M0001685', 'M0001699']
-        self.currency_rule_name = ['中期借贷便利(MLF):投放数量:6个月', '中期借贷便利(MLF):投放数量:1年', '抵押补充贷款(PSL):期末余额',
-                          '抵押补充贷款(PSL):提供资金:当月新增', '公开市场操作:货币净投放', '公开市场操作:货币投放',
-                          '公开市场操作:货币回笼', '逆回购:到期量', '人民币存款准备金率:中小型存款类金融机构(月)',
-                          '人民币存款准备金率:大型存款类金融机构(月)', '超额存款准备金率(超储率):金融机构',
-                          '超额存款准备金率(超储率):农村信用社', '货币当局:对其他存款性公司债权', '货币当局:政府存款']
+        self.currency_rule = ['M0329541', 'M0329542', 'M5528822', 'M5528821', 'M0061614', 'M0061615', 'M0061616',
+                              'M0062600', 'M0043821', 'M0061518', 'M0010096', 'M0010099', 'M0001685', 'M0001699']
+        self.currency_rule_name = ['中期借贷便利(MLF):投放数量:6个月', '中期借贷便利(MLF):投放数量:1年',
+                                   '抵押补充贷款(PSL):期末余额', '抵押补充贷款(PSL):提供资金:当月新增',
+                                   '公开市场操作:货币净投放', '公开市场操作:货币投放', '公开市场操作:货币回笼',
+                                   '逆回购:到期量', '人民币存款准备金率:中小型存款类金融机构(月)',
+                                   '人民币存款准备金率:大型存款类金融机构(月)', '超额存款准备金率(超储率):金融机构',
+                                   '超额存款准备金率(超储率):农村信用社', '货币当局:对其他存款性公司债权',
+                                   '货币当局:政府存款']
 
         # 财政政策类指标
         self.fin_rule = ['M0041707', 'M0041710', 'M0057912', 'M0046167', 'M0024064', 'M0046169', 'M0024063']
         self.fin_rule_name = ['债券发行量:政府债券:累计值', '债券发行量:政策性银行债:累计值', '债券发行量:地方政府债:累计值',
                               '公共财政支出:累计同比', '公共财政支出:当月同比', '公共财政收入:累计同比', '公共财政收入:当月同比']
 
-        # 行业监管类指标
+        # 行业监管类指标(quarter)
         self.field = ['M0061670', 'M5201621', 'M5201622', 'M0061671', 'M5201620', 'M0002003', 'M0007451']
         self.field_name = ['商业银行:流动性比例', '商业银行:存贷比', '商业银行:人民币超额备付金率', '商业银行:资本充足率',
                            '商业银行:净息差', '不良贷款余额:商业银行', '商业银行:拨备覆盖率']
@@ -277,15 +285,12 @@ class Loaders:
 
         ### general
         self.strategy_day = ['M1006618', 'M1003521', 'M0096870']
-        self.strategy_day_name = [ '同业存单到期收益率(AAA+):1年', '短期融资券到期收益率(AAA+):1年', '贷款基础利率(LPR):1年']
+        self.strategy_day_name = ['同业存单到期收益率(AAA+):1年', '短期融资券到期收益率(AAA+):1年', '贷款基础利率(LPR):1年']
 
         ## monthly
         self.strategy_mon = ['M0001529', 'M0009969', 'M0251909', 'M0001548', 'M0062845', 'M0150191', 'M0001557']
-        self.strategy_mon_name = ['金融机构:本外币:资金来源:各项存款:境内存款:住户存款:活期存款', '金融机构:各项贷款余额',
-                                  '金融机构:本外币:资金运用:各项贷款:境内贷款:住户贷款:中长期贷款',
-                                  '金融机构:本外币:资金运用:各项贷款:境内贷款:非金融企业及机关团体贷款',
-                                  '金融机构:本外币:资金来源:各项存款:境内存款:非金融企业存款:活期存款',
-                                  '金融机构:本外币:资金运用:债券投资', '金融机构:本外币:资金运用:总计']
+        self.strategy_mon_name = ['居民活期存款', '各项贷款', '居住中长期贷款', '非金融企业及机关团体各项贷款',
+                                  '非金融企业活期存款', '债券投资', '资金运用总计']
 
     def get_bond(self):
         bond_code = ""
@@ -600,16 +605,211 @@ class Loaders:
         raw_data = w.edb(diffrate_code, "2010-01-01", now_date)
         data = pd.DataFrame()
         data['date'] = pd.Series(raw_data.Times)
+        data.set_index(['date'], inplace=True)
+        bond = self.get_bond()['中债国债到期收益率:' + str(year) + '年']
         for i in range(len(raw_data.Codes)):
-            bond = self.get_bond()['中债国债到期收益率:' + str(year) + '年']
-            origin = pd.DataFrame({diffrate_name[i] : raw_data.Data[i],
-                                   'date': pd.Series(raw_data.Times)}, index='date')
-            bond.join(origin, how='inner')
+            origin = pd.DataFrame({diffrate_name[i]: raw_data.Data[i],
+                                   'date': pd.Series(raw_data.Times)})
             origin.set_index(['date'], inplace=True)
+            origin = origin.join(bond, how='inner')
+            data[diffrate_name[i]] = origin[diffrate_name[i]] - origin['中债国债到期收益率:' + str(year) + '年']
+        return data
 
-            data[diffrate_name[i]] = pd.Series(raw_data.Data[i])
+    def get_supervise1(self, year):
+        """
+        获取其他政府监管类指标(daily)
+        :return:
+        """
+        supervise_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        for i in range(len(self.supervise1)):
+            supervise_code += self.supervise1[i]
+            if i < (len(self.supervise1) - 1):
+                supervise_code += ', '
+        raw_data = w.edb(supervise_code, "2010-01-01", now_date)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        data.set_index(['date'], inplace=True)
+        bond_name = '中债国债到期收益率:' + str(year) + '年'
+        bond = self.get_bond()[bond_name]
+        for i in range(len(raw_data.Codes)):
+            origin = pd.DataFrame({self.supervise1_name[i]: raw_data.Data[i],
+                                       'date': pd.Series(raw_data.Times)})
+            origin.set_index(['date'], inplace=True)
+            origin = origin.join(bond, how='inner')
+            data[bond_name + '-' + self.supervise1_name[i]] = origin[bond_name] - origin[self.supervise1_name[i]]
+        return data
+
+    def get_supervise2(self):
+        """
+        获取其他政府监管类指标(monthly)
+        :return:
+        """
+        supervise_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        for i in range(len(self.supervise2)):
+            supervise_code += self.supervise2[i]
+            if i < (len(self.supervise2) - 1):
+                supervise_code += ', '
+        raw_data = w.edb(supervise_code, "2010-01-01", now_date)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        for i in range(len(raw_data.Codes)):
+            data[self.supervise2_name[i]] = pd.Series(raw_data.Data[i])
         data.set_index(['date'], inplace=True)
         return data
+
+    def get_currency_rule(self):
+        """
+        获取货币政策类指标
+        :return:
+        """
+        currency_rule_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        for i in range(len(self.currency_rule)):
+            currency_rule_code += self.currency_rule[i]
+            if i < (len(self.currency_rule) - 1):
+                currency_rule_code += ', '
+        raw_data = w.edb(currency_rule_code, "2010-01-01", now_date)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        for i in range(len(raw_data.Codes)):
+            data[self.currency_rule_name[i]] = pd.Series(raw_data.Data[i])
+        data.set_index(['date'], inplace=True)
+        return data
+
+    def get_fin_rule(self):
+        """
+        获取财政政策类指标
+        :return:
+        """
+        fin_rule_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        for i in range(len(self.fin_rule)):
+            fin_rule_code += self.fin_rule[i]
+            if i < (len(self.fin_rule) - 1):
+                fin_rule_code += ', '
+        raw_data = w.edb(fin_rule_code, "2010-01-01", now_date)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        for i in range(len(raw_data.Codes)):
+            data[self.fin_rule_name[i]] = pd.Series(raw_data.Data[i])
+        data.set_index(['date'], inplace=True)
+        return data
+
+    def get_field(self):
+        """
+        获取行业监管类指标
+        :return:
+        """
+        field_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        for i in range(len(self.field)):
+            field_code += self.field[i]
+            if i < (len(self.field) - 1):
+                field_code += ', '
+        raw_data = w.edb(field_code, "2010-01-01", now_date)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        for i in range(len(raw_data.Codes)):
+            data[self.field_name[i]] = pd.Series(raw_data.Data[i])
+        data.set_index(['date'], inplace=True)
+        return data
+
+    def get_strategy1(self, year):
+        """
+        获取资产策略类指标(daily)
+        :return:
+        """
+        strategy_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        if year == 1:
+            strategy = self.strategy_day1 + self.strategy_day
+            strategy_name = self.strategy_day1_name + self.strategy_day_name
+        elif year == 2:
+            strategy = self.strategy_day2 + self.strategy_day
+            strategy_name = self.strategy_day2_name + self.strategy_day_name
+        elif year == 3:
+            strategy = self.strategy_day3 + self.strategy_day
+            strategy_name = self.strategy_day3_name + self.strategy_day_name
+        elif year == 5:
+            strategy = self.strategy_day5 + self.strategy_day
+            strategy_name = self.strategy_day5_name + self.strategy_day_name
+        elif year == 7:
+            strategy = self.strategy_day7 + self.strategy_day
+            strategy_name = self.strategy_day7_name + self.strategy_day_name
+        else:
+            strategy = self.strategy_day10 + self.strategy_day
+            strategy_name = self.strategy_day10_name + self.strategy_day_name
+        for i in range(len(strategy)):
+            strategy_code += strategy[i]
+            if i < (len(strategy) - 1):
+                strategy_code += ', '
+        raw_data = w.edb(strategy_code, "2010-01-01", now_date)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        data.set_index(['date'], inplace=True)
+        bond_name = '中债国债到期收益率:' + str(year) + '年'
+        bond = self.get_bond()[bond_name]
+        for i in range(len(raw_data.Codes)):
+            origin = pd.DataFrame({strategy_name[i]: raw_data.Data[i],
+                                   'date': pd.Series(raw_data.Times)})
+            origin.set_index(['date'], inplace=True)
+            origin = origin.join(bond, how='inner')
+            data[strategy_name[i] +  '-' + bond_name] = origin[strategy_name[i]] - origin[bond_name]
+        return data
+
+    def get_strategy2(self):
+        """
+        获取资产策略类指标(monthly)
+        :return:
+        """
+        strategy_code = ""
+        now_date = t.strftime('%Y-%m-%d', t.localtime(t.time()))
+        for i in range(len(self.strategy_mon)):
+            strategy_code += self.strategy_mon[i]
+            if i < (len(self.strategy_mon) - 1):
+                strategy_code += ', '
+        raw_data = w.edb(strategy_code, "2010-01-01", now_date)
+        origin = pd.DataFrame()
+        origin['date'] = pd.Series(raw_data.Times)
+        # origin.set_index(['date'], inplace=True)
+        data = pd.DataFrame()
+        data['date'] = pd.Series(raw_data.Times)
+        for i in range(len(raw_data.Codes)):
+            origin[self.strategy_mon_name[i]] = pd.Series(raw_data.Data[i])
+        data['居民活期存款/各项贷款'] = \
+            origin.apply(lambda row: self.colDivider(row['居民活期存款'], row['各项贷款']), axis=1)
+        data['居民活期存款/居住中长期贷款'] = \
+            origin.apply(lambda row: self.colDivider(row['居民活期存款'], row['居住中长期贷款']), axis=1)
+        data['居民活期存款/非金融企业及机关团体各项贷款'] = \
+            origin.apply(lambda row: self.colDivider(row['居民活期存款'], row['非金融企业及机关团体各项贷款']), axis=1)
+        data['非金融企业活期存款/各项贷款'] = \
+            origin.apply(lambda row: self.colDivider(row['非金融企业活期存款'], row['各项贷款']), axis=1)
+        data['非金融企业活期存款/居住中长期贷款'] = \
+            origin.apply(lambda row: self.colDivider(row['非金融企业活期存款'], row['居住中长期贷款']), axis=1)
+        data['非金融企业活期存款/非金融企业及机关团体各项贷款'] = \
+            origin.apply(lambda row: self.colDivider(row['居民活期存款'], row['非金融企业及机关团体各项贷款']), axis=1)
+        data['债券投资/资金运用总计'] = \
+            origin.apply(lambda row: self.colDivider(row['债券投资'], row['资金运用总计']), axis=1)
+        data.set_index(['date'], inplace=True)
+        return data
+
+    @staticmethod
+    def colDivider(a, b):
+        try:
+            return a / b
+        except:
+            return np.NaN
+
+    @staticmethod
+    def quarter(data):
+        """
+        convert monthly to quarterly data
+        :return:
+        """
+        q = (data.month // 3) + 1
+        return q
 
     @staticmethod
     def ADFtest(data):
@@ -637,15 +837,6 @@ class Loaders:
         alls = pd.DataFrame.from_dict(alls)
         alls = alls[['时间序列(差分处理)', 'ADF值', '1%临界值', '5%临界值', '是否平稳']]
         return alls
-
-    @staticmethod
-    def quarter(data):
-        """
-        convert monthly to quarterly data
-        :return:
-        """
-        q = (data.month // 3) + 1
-        return q
 
     def cointest(self, data, period, bond):
         """
@@ -692,8 +883,8 @@ class Loaders:
                 datanew['quarter'] = pd.Series([self.quarter(i) for i in datanew.index], index=datanew.index)
                 datanew.set_index(['year', 'quarter'], drop = True, inplace = True)
                 ys = copy.deepcopy(y)
-                ys['year'] = pd.Series([i.year for i in datanew.index], index=ys.index)
-                ys['quarter'] = pd.Series([self.quarter(i) for i in datanew.index], index=ys.index)
+                ys['year'] = pd.Series([i.year for i in ys.index], index=ys.index)
+                ys['quarter'] = pd.Series([self.quarter(i) for i in ys.index], index=ys.index)
                 ys.drop_duplicates(['year', 'quarter'], keep = 'last', inplace = True)
                 ys.set_index(['year', 'quarter'], drop = True, inplace = True)
             # print(ys)
@@ -759,8 +950,8 @@ class Loaders:
                 datanew['quarter'] = pd.Series([self.quarter(i) for i in datanew.index], index=datanew.index)
                 datanew.set_index(['year', 'quarter'], drop=True, inplace=True)
                 ys = copy.deepcopy(y)
-                ys['year'] = pd.Series([i.year for i in datanew.index], index=ys.index)
-                ys['quarter'] = pd.Series([self.quarter(i) for i in datanew.index], index=ys.index)
+                ys['year'] = pd.Series([i.year for i in ys.index], index=ys.index)
+                ys['quarter'] = pd.Series([self.quarter(i) for i in ys.index], index=ys.index)
                 ys.drop_duplicates(['year', 'quarter'], keep='last', inplace=True)
                 ys.set_index(['year', 'quarter'], drop=True, inplace=True)
             for col in data.columns:
@@ -777,6 +968,49 @@ class Loaders:
         alls = pd.DataFrame.from_dict(alls)
         alls = alls[['指标变化率的时间序列', 'coef', 'Prob(F-statistic)', 'R-squared', 'No.Observations']]
         return alls
+
+    def ENtest(self, type, bond, period='month'):
+        """
+        弹性网回归
+        :param type: 使用的指标类型，eg: 'product', 'commerce'
+        :param period: frequency of data, default 'month'
+        :param bond: year of bond, one of 1, 2, 3, 5, 7, 10
+        :return:
+        """
+        bond_name = '中债国债到期收益率:' + str(bond) + '年'
+        name = list(y.columns)[0]
+        if period == 'special day':
+            datanew = data[cols].join(y[name], how='outer')
+            datanew[name].fillna(inplace=True, method='ffill', limit=31)
+            datanew.dropna(inplace=True)
+        else:
+            if period == 'day':
+                ys = y
+                datanew = data
+            if period == 'month':
+                datanew = copy.deepcopy(data)
+                datanew['year'] = datanew.index.year
+                datanew['month'] = datanew.index.month
+                datanew.set_index(['year', 'month'], drop=True, inplace=True)
+                ys = copy.deepcopy(y)
+                ys['year'] = ys.index.year
+                ys['month'] = ys.index.month
+                ys.drop_duplicates(['year', 'month'], keep='last', inplace=True)
+                ys.set_index(['year', 'month'], drop=True, inplace=True)
+            if period == 'quater':
+                datanew = copy.deepcopy(data)
+                datanew['year'] = datanew.index.year
+                datanew['quater'] = quater(datanew.index)
+                datanew.set_index(['year', 'quater'], drop=True, inplace=True)
+                ys = copy.deepcopy(y)
+                ys['year'] = ys.index.year
+                ys['quater'] = quater(ys.index)
+                ys.drop_duplicates(['year', 'quater'], keep='last', inplace=True)
+                ys.set_index(['year', 'quater'], drop=True, inplace=True)
+            datanew = datanew[cols].join(ys[name], how='inner')
+            datanew.dropna(inplace=True)
+        #     datanew.to_csv(filename, encoding = 'utf_8_sig', index = False, header = None)
+        return datanew
 
     @staticmethod
     def __gen_results__(adf, coin, results):
@@ -821,6 +1055,25 @@ class Loaders:
             data = self.get_bliquidity()
         elif type == 'transboarder':
             data = self.get_transboarder()
+        elif type == 'diffrate':
+            data = self.get_diffrate(bond)
+        elif type == 'supervise1':
+            data = self.get_supervise1(bond)
+        elif type == 'supervise2':
+            data = self.get_supervise2()
+        elif type == 'currency_rule':
+            data = self.get_currency_rule()
+        elif type == 'fin_rule':
+            data = self.get_fin_rule()
+        elif type == 'field':
+            data = self.get_field()
+        elif type == 'strategy1':
+            data = self.get_strategy1(bond)
+        else:
+            '''
+            type == 'strategy2'
+            '''
+            data = self.get_strategy2()
         adf = self.ADFtest(data)
         coin = self.cointest(data, period, bond)
         regs = self.reg(data, period, bond)
